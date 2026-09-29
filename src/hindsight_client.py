@@ -69,17 +69,22 @@ def _offline_search(query: str, tags=None, max_results: int = 10) -> list:
     for fact in _OFFLINE_STORE:
         ftags = fact.get("tags") or []
         # any_strict: when filter tags supplied, drop untagged / non-matching facts
+        # Case-insensitive: Acme==acme==ACME (win-rate already lowercases).
         if tags:
-            if not ftags or not set(ftags) & set(tags):
+            ftags_lower = set(str(t).lower() for t in ftags)
+            tags_lower = set(str(t).lower() for t in tags)
+            if not ftags or not ftags_lower & tags_lower:
                 continue
         text = (fact.get("text") or "").lower()
         score = 0
         for tok in qtokens:
             if tok in text:
                 score += 1
-        # tag overlap bonus
+        # tag overlap bonus (case-insensitive)
         if tags:
-            score += len(set(ftags) & set(tags)) * 2
+            ftags_lower = set(str(t).lower() for t in ftags)
+            tags_lower = set(str(t).lower() for t in tags)
+            score += len(ftags_lower & tags_lower) * 2
         # competitor boost: query mentions competitor explicitly
         scored.append((score, fact))
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -136,7 +141,7 @@ def _result_to_fact(r, idx: int = 0) -> dict:
 
 
 class HindsightMemoryClient:
-    """Thin wrapper with offline fallback + hackathon-safe defaults."""
+    """Thin wrapper with offline fallback + demo-safe defaults."""
 
     def __init__(self, bank_id: str = None, base_url: str = None):
         self.bank_id = bank_id or BANK_ID

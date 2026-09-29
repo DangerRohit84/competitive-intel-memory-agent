@@ -20,7 +20,11 @@ CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "qwen/qwen3-32b")
 
 
 def _competitor_tag(competitor: str) -> str:
-    return "competitor:{}".format((competitor or "").strip())
+    # Canonicalize case so Acme==acme==ACME; keeps tags=["competitor:X"] convention.
+    # Stored tags use Title case (seed.py); downstream _offline_search is also
+    # case-insensitive (lower() both sides) as belt-and-braces.
+    name = (competitor or "").strip()
+    return "competitor:{}".format(name.title() if name else "")
 
 
 def recall_for_battlecard(rfp_text: str, competitor: str) -> list:
