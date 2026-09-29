@@ -1,4 +1,4 @@
-# Architecture — Mermaid (Figma export source)
+# Architecture â€” Mermaid (Figma export source)
 
 Export: paste into Mermaid.live or Figma Mermaid plugin, 1600x900 PNG + SVG.
 

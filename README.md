@@ -48,7 +48,7 @@ Offline path: no keys -> recall + compose directly from seed.json.
 - `seed.py` — `retain(text=content, context="competitive intel <type>", document_id=<stable id>, tags=["competitor:<X>", ...])` for each of the 18 seed items.
 - `streamlit_app.py` left pane — **Retain new intel** button calls the same
   `retain()` with the selected competitor + intel type.
-- Document IDs are stable (`intel-001` … `intel-018`) so re-seeding is idempotent.
+- Seed document IDs are stable (`intel-001` … `intel-018`) so re-seeding is idempotent; live UI retains use unique `ui-<epoch>` IDs.
 
 **Recall (read path):**
 - `src/agent.py:generate_battlecard(rfp_text, competitor)` recalls top notes
@@ -85,6 +85,15 @@ Cold vs With-memory battlecards, citations, recall trace, and win-rate dashboard
 - YouTube walkthrough (120s): _TODO — add video link here_
 - Article / deep-dive: _TODO — add blog link here_
 
+
+## DEPLOY_STEPS
+
+- [ ] Keys: copy .env.example to .env, set HINDSIGHT_API_KEY, HINDSIGHT_BANK_ID, GROQ_API_KEY
+- [ ] Seed: run seed dry-run then seed live
+- [ ] Deploy: deploy Streamlit app, paste live URL above
+- [ ] Video: record 120s per demo script, upload to YouTube, paste link above
+- [ ] Article: publish article draft, paste blog link above
+
 ## Links
 
 - Hindsight repo: https://github.com/vectorize-io/hindsight
@@ -99,3 +108,7 @@ Cold vs With-memory battlecards, citations, recall trace, and win-rate dashboard
 - `streamlit_app.py` — 2-pane UI with offline fallback + win-rate dashboard
 - `README.md` — this file
 - `demo_script.md` — 120-second demo script
+
+## License
+
+MIT — see [LICENSE](LICENSE).

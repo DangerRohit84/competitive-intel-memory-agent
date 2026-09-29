@@ -18,7 +18,7 @@ Total: 2:00. Practice once with the UI open at http://localhost:8501.
 > needs SSO, audit logs, India hosting, per-seat pricing — and generate
 > with NO memory."
 
-[Click Generate battlecard with memory disabled / show Cold column.]
+[Click Generate battlecard / show Cold column side-by-side.]
 
 > "See? Secure, scalable platform, competitive pricing, trusted everywhere.
 > True, and useless. No numbers, no traps, no proof."

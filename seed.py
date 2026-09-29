@@ -46,6 +46,7 @@ def build_retain_kwargs(item):
         "text": item.get("content", ""),
         "context": "competitive intel {}".format(intel_type),
         "document_id": item.get("id"),
+        "timestamp": item.get("timestamp"),
         "tags": tags,
         "metadata": {
             "deal_id": item.get("deal_id"),
