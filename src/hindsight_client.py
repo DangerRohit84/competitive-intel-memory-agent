@@ -259,27 +259,99 @@ class HindsightMemoryClient:
         return last
 
     # -- reflect --
-    def reflect(self, query: str, tags=None, include_facts: bool = True, **kwargs) -> dict:
+    def reflect(
+        self,
+        query: str,
+        tags=None,
+        include_facts: bool = True,
+        response_schema: dict = None,
+        **kwargs,
+    ) -> dict:
+        """Reflect with structured output + based_on.memories IDs.
+
+        - tags_match="any_strict" preserved (tagged-only scope).
+        - response_schema passed through for {conclusion, cited_ids, confidence}.
+        - Returns {text, facts, structured_output, offline}.
+        - Offline fallback: synthesize from recall (no keys) — caller builds
+          [Memory N -> intel-00X] citations from returned facts.
+        """
         client = _get_live_client()
         if client is not None:
             try:
-                resp = client.reflect(
+                reflect_kwargs = dict(
                     bank_id=self.bank_id,
                     query=query,
                     tags=tags,
-                    tags_match="any_strict",
+                    tags_match="any_strict",  # LOCKED: tagged-only scope
                     include_facts=include_facts,
                 )
+                if response_schema is not None:
+                    reflect_kwargs["response_schema"] = response_schema
+                # allow caller overrides (budget/context/...) without breaking locked defaults
+                reflect_kwargs.update(kwargs)
+                resp = client.reflect(**reflect_kwargs)
                 based = []
                 based_on = getattr(resp, "based_on", None)
                 if based_on and getattr(based_on, "memories", None):
                     based = [_result_to_fact(f, i) for i, f in enumerate(based_on.memories)]
-                return {"text": getattr(resp, "text", ""), "facts": based, "offline": False}
-            except Exception as exc:
-                pass  # fall through; `exc` kept out of response to avoid lint noise
+                structured = getattr(resp, "structured_output", None)
+                return {
+                    "text": getattr(resp, "text", ""),
+                    "facts": based,
+                    "structured_output": structured,
+                    "offline": False,
+                }
+            except Exception:
+                pass  # fall through; offline cache already available
         facts = self.recall(query, tags=tags)
         summary = "\n".join("- {}".format(f.get("text", "")) for f in facts[:5]) or "No memories found."
-        return {"text": summary, "facts": facts, "offline": True}
+        return {"text": summary, "facts": facts, "structured_output": None, "offline": True}
+
+    def get_memory_stats(self) -> dict:
+        """Type counts for UI dashboard: {world, experience, observation, total}.
+
+        Offline store first (always works); live list_memories best-effort merge
+        (takes max per bucket to survive consolidation lag).
+        Maps seed intel_types (pricing/feature->world, win/loss->experience)
+        so seed.json dashboard is meaningful offline.
+        """
+        def _bucket(t: str) -> str:
+            t = str(t or "world").lower()
+            if t in ("world", "experience", "observation"):
+                return t
+            if t in ("win", "loss"):
+                return "experience"
+            # pricing/feature/general/unknown -> world knowledge
+            return "world"
+
+        counts = {"world": 0, "experience": 0, "observation": 0, "total": 0}
+        for fact in _OFFLINE_STORE:
+            counts[_bucket(fact.get("type"))] += 1
+        counts["total"] = len(_OFFLINE_STORE)
+
+        client = _get_live_client()
+        if client is not None:
+            try:
+                live_counts = {}
+                for t in ("world", "experience", "observation"):
+                    try:
+                        resp = client.list_memories(bank_id=self.bank_id, type=t, limit=1)
+                        tot = getattr(resp, "total", None)
+                        if tot is None:
+                            items = getattr(resp, "items", None) or []
+                            tot = len(items)
+                        live_counts[t] = int(tot or 0)
+                    except Exception:
+                        live_counts[t] = 0
+                # merge: max() avoids undercount when offline has unsynced retains
+                # or live has older synced docs not in this process's memory
+                for t in ("world", "experience", "observation"):
+                    if live_counts.get(t, 0) > counts[t]:
+                        counts[t] = live_counts[t]
+                counts["total"] = counts["world"] + counts["experience"] + counts["observation"]
+            except Exception:
+                pass  # best-effort only; offline counts already valid
+        return counts
 
 
 # Singleton + module-level funcs (seed.py imports `retain` directly)
@@ -299,9 +371,16 @@ def recall(query, tags=None, budget=DEFAULT_BUDGET, max_tokens=DEFAULT_MAX_TOKEN
     return _default_client.recall(query, tags=tags, budget=budget, max_tokens=max_tokens, types=types, **kwargs)
 
 
-def reflect(query, tags=None, include_facts=True, **kwargs):
-    return _default_client.reflect(query, tags=tags, include_facts=include_facts, **kwargs)
+def reflect(query, tags=None, include_facts=True, response_schema=None, **kwargs):
+    return _default_client.reflect(
+        query, tags=tags, include_facts=include_facts, response_schema=response_schema, **kwargs
+    )
 
 
 def recall_with_retry(query, tags=None, retries=3, delay_s=2.0, **kw):
     return _default_client.recall_with_retry(query, tags=tags, retries=retries, delay_s=delay_s, **kw)
+
+
+def get_memory_stats() -> dict:
+    """Module-level helper for UI dashboard: {world, experience, observation, total}."""
+    return _default_client.get_memory_stats()
