@@ -407,6 +407,24 @@ if "_rfp_text" not in st.session_state:
     st.session_state["_rfp_text"] = DEFAULT_RFP
 if "_competitor" not in st.session_state:
     st.session_state["_competitor"] = "Acme"
+# Streamlit-correct pending-load: apply BEFORE any widget with the same
+# key is instantiated. Load handler only sets _pending_* then reruns;
+# we apply here so rfp_text_input / competitor_select are set before
+# their selectbox/text_area exist this run (avoids StreamlitAPIException).
+# TODO(rohit): remove _pending_* once Streamlit supports atomic widget update.
+if st.session_state.get("_pending_load"):
+    if "_pending_rfp" in st.session_state:
+        st.session_state["_rfp_text"] = st.session_state["_pending_rfp"]
+        st.session_state["rfp_text_input"] = st.session_state["_pending_rfp"]
+    if "_pending_competitor" in st.session_state:
+        st.session_state["_competitor"] = st.session_state["_pending_competitor"]
+        st.session_state["competitor_select"] = st.session_state["_pending_competitor"]
+    for _k in ("_pending_rfp", "_pending_competitor", "_pending_load"):
+        st.session_state.pop(_k, None)
+# Same root cause for retain box: clear BEFORE new_text widget exists.
+if st.session_state.get("_pending_clear_new_text"):
+    st.session_state["new_text"] = ""
+    st.session_state.pop("_pending_clear_new_text", None)
 # Persisted battlecard state so reruns don't wipe output (fix #1).
 # Also init agent-error + recall/result/mode slots (fix #3).
 if "_result" not in st.session_state:
@@ -446,9 +464,9 @@ with left:
             st.caption("Expects: {} | {}".format(
                 ", ".join(preset["expected"]), preset["why"]))
             if st.button("Load this RFP", key="load-" + preset["label"]):
-                st.session_state["_rfp_text"] = preset["text"]
-                st.session_state["rfp_text_input"] = preset["text"]
-                st.session_state["_competitor"] = preset["competitor"]
+                st.session_state["_pending_rfp"] = preset["text"]
+                st.session_state["_pending_competitor"] = preset["competitor"]
+                st.session_state["_pending_load"] = True
                 st.rerun()
 
     st.divider()
@@ -471,7 +489,7 @@ with left:
                        metadata={"intel_type": new_type,
                                  "competitor": competitor})
                 st.success("Retained to memory.")
-                st.session_state["new_text"] = ""
+                st.session_state["_pending_clear_new_text"] = True
                 st.rerun()
             except BaseException as exc:
                 st.info("Saved to local snapshot for this session ({}).".format(exc))
