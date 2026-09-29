@@ -63,7 +63,7 @@ Offline path: no keys -> recall + compose directly from seed.json.
 ```bash
 # 1. env
 cp .env.example .env
-# edit .env -> HINDSIGHT_API_KEY, HINDSIGHT_PROJECT, etc.
+# edit .env -> HINDSIGHT_API_KEY, HINDSIGHT_BANK_ID, HINDSIGHT_BASE_URL, etc.
 
 # 2. install
 pip install -r requirements.txt

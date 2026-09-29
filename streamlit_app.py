@@ -115,7 +115,7 @@ def offline_battlecard(rfp_text, competitor, recalled):
 
 
 def has_hindsight_keys():
-    return bool(os.getenv("HINDSIGHT_API_KEY") or os.getenv("HINDSIGHT_PROJECT"))
+    return bool(os.getenv("HINDSIGHT_API_KEY"))
 
 
 def generate_with_memory(rfp_text, competitor, recalled):
@@ -125,6 +125,16 @@ def generate_with_memory(rfp_text, competitor, recalled):
         result = generate_battlecard(rfp_text, competitor)
         # expected {battlecard_md, citations, memory_impact}
         if isinstance(result, dict) and "battlecard_md" in result:
+            # Fresh-launch bridge: honest-empty from Hindsight store (empty
+            # until Seed/Retain) must not diverge from seed.json trace.
+            # If citations are empty but seed recall hit, render offline card.
+            if not result.get("citations") and recalled:
+                md = offline_battlecard(rfp_text, competitor, recalled)
+                cites = [{"id": it.get("id"), "text": it.get("content", "")[:200]}
+                         for _, it in recalled[:2]]
+                return {"battlecard_md": md, "citations": cites,
+                        "memory_impact": "offline fallback: {} notes from seed.json".format(
+                            len(recalled))}, "offline"
             return result, "hindsight"
     except Exception as exc:
         st.session_state["_agent_error"] = str(exc)
