@@ -9,6 +9,7 @@ Runs on a local memory snapshot (seed.json, 18 notes) when Hindsight
 keys are missing - same recall path, live when keys are set.
 """
 
+import datetime
 import json
 import os
 import re
@@ -185,16 +186,35 @@ def generate_with_memory(rfp_text, competitor, recalled):
 
 # ---------- new helpers (UI-only, no src/ changes) ----------
 
+def _normalize_ts(value):
+    """Normalize timestamp to ISO string for stable lexicographic sort. O(1)."""
+    if not value:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    # Normalize trailing Z -> +00:00 so mixed Z/offset/date-only sort together.
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    return text
+
+
 def _item_timestamp(item):
-    """Best-effort timestamp for seed or Hindsight fact dicts."""
+    """Best-effort normalized timestamp for seed or Hindsight fact dicts."""
     for key in ("timestamp", "occurred_start", "occurred_at"):
         val = item.get(key)
         if val:
-            return str(val)
+            return _normalize_ts(val)
     meta = item.get("metadata") or {}
     if isinstance(meta, dict) and meta.get("timestamp"):
-        return str(meta["timestamp"])
+        return _normalize_ts(meta["timestamp"])
     return ""
+
+
+def _temporal_sort_key(fact):
+    """Sort key putting undated last: (ts == '', ts). O(1)."""
+    ts = _item_timestamp(fact)
+    return (ts == "", ts)
 
 
 def build_temporal_facts(recalled, result, items=None, competitor=None):
@@ -206,14 +226,13 @@ def build_temporal_facts(recalled, result, items=None, competitor=None):
     """
     agent_facts = (result or {}).get("temporal_facts")
     if agent_facts:
-        return sorted(agent_facts, key=lambda f: str(
-            f.get("timestamp") or f.get("occurred_start") or ""))
+        return sorted(agent_facts, key=_temporal_sort_key)
     if items is not None and competitor:
         full = [it for it in items if it.get("competitor") == competitor]
         if full:
-            return sorted(full, key=lambda x: _item_timestamp(x))
+            return sorted(full, key=_temporal_sort_key)
     flat = [it for _, it in (recalled or [])]
-    return sorted(flat, key=lambda x: _item_timestamp(x))
+    return sorted(flat, key=_temporal_sort_key)
 
 
 def build_synthesis_md(result, recalled, competitor):
@@ -233,15 +252,69 @@ def build_synthesis_md(result, recalled, competitor):
 
 
 def build_synthesis_cites(result, recalled):
-    """Prefer agent synthesis_cites; else map Memory N -> intel-00X."""
+    """Prefer agent synthesis_cites; else map Memory N -> intel-00X.
+
+    Live agent cites may be bare {n, id} with blank text - look up text
+    from the recall/citation pool so the UI never shows blanks.
+    Always returns uniform {n, id, document_id, text}. O(n).
+    """
+    # Lookup pool: id -> {text, document_id} from recalled + citations.
+    pool = {}
+    for _, it in (recalled or []):
+        cid = it.get("id") or it.get("document_id")
+        if cid and str(cid) not in pool:
+            pool[str(cid)] = {
+                "text": str(it.get("content", "") or "")[:220],
+                "document_id": it.get("document_id") or it.get("id"),
+            }
+    for c in ((result or {}).get("citations", []) or []):
+        cid = c.get("id") or c.get("document_id")
+        if not cid:
+            continue
+        txt = str(c.get("text", "") or "").strip()
+        if str(cid) not in pool or (not pool[str(cid)]["text"] and txt):
+            pool[str(cid)] = {
+                "text": txt[:220],
+                "document_id": c.get("document_id") or c.get("id"),
+            }
+    for f in ((result or {}).get("temporal_facts", []) or []):
+        cid = f.get("id") or f.get("document_id")
+        if not cid or str(cid) in pool:
+            continue
+        txt = str(f.get("content") or f.get("text") or "")
+        if txt.strip():
+            pool[str(cid)] = {
+                "text": txt[:220],
+                "document_id": f.get("document_id") or f.get("id"),
+            }
     if result and result.get("synthesis_cites"):
-        return result["synthesis_cites"]
+        enriched = []
+        for i, c in enumerate(result["synthesis_cites"]):
+            cid = c.get("id", "?")
+            txt = str(c.get("text", "") or "").strip()
+            if not txt and str(cid) in pool:
+                txt = pool[str(cid)]["text"]
+            doc_id = (c.get("document_id") or
+                      pool.get(str(cid), {}).get("document_id") or cid)
+            enriched.append({"n": c.get("n", i + 1), "id": cid,
+                             "document_id": doc_id,
+                             "text": (txt or "")[:220]})
+        return enriched
     cites = (result or {}).get("citations", []) or []
     if cites:
-        return [{"n": i + 1, "id": c.get("id", "?"),
-                 "text": c.get("text", "")[:220]}
-                for i, c in enumerate(cites[:5])]
+        out = []
+        for i, c in enumerate(cites[:5]):
+            cid = c.get("id", "?")
+            txt = str(c.get("text", "") or "").strip()
+            if not txt and str(cid) in pool:
+                txt = pool[str(cid)]["text"]
+            doc_id = (c.get("document_id") or
+                      pool.get(str(cid), {}).get("document_id") or cid)
+            out.append({"n": i + 1, "id": cid,
+                        "document_id": doc_id, "text": (txt or "")[:220]})
+        return out
     return [{"n": i + 1, "id": it.get("id", "?"),
+             "document_id": it.get("document_id") or it.get("id", "?"),
              "text": it.get("content", "")[:220]}
             for i, (_, it) in enumerate((recalled or [])[:5])]
 
@@ -334,6 +407,20 @@ if "_rfp_text" not in st.session_state:
     st.session_state["_rfp_text"] = DEFAULT_RFP
 if "_competitor" not in st.session_state:
     st.session_state["_competitor"] = "Acme"
+# Persisted battlecard state so reruns don't wipe output (fix #1).
+# Also init agent-error + recall/result/mode slots (fix #3).
+if "_result" not in st.session_state:
+    st.session_state["_result"] = None
+if "_recalled" not in st.session_state:
+    st.session_state["_recalled"] = None
+if "_mode" not in st.session_state:
+    st.session_state["_mode"] = None
+if "_agent_error" not in st.session_state:
+    st.session_state["_agent_error"] = ""
+if "_gen_competitor" not in st.session_state:
+    st.session_state["_gen_competitor"] = ""
+if "_gen_rfp" not in st.session_state:
+    st.session_state["_gen_rfp"] = ""
 
 left, right = st.columns([1, 2])
 
@@ -341,13 +428,14 @@ with left:
     st.subheader("Input")
     competitor = st.selectbox("Competitor", COMPETITORS,
                               index=COMPETITORS.index(st.session_state["_competitor"])
-                              if st.session_state["_competitor"] in COMPETITORS else 0)
+                              if st.session_state["_competitor"] in COMPETITORS else 0,
+                              key="competitor_select")
     st.session_state["_competitor"] = competitor
     rfp_text = st.text_area("RFP / deal context", height=180,
                             value=st.session_state["_rfp_text"],
                             key="rfp_text_input")
     st.session_state["_rfp_text"] = rfp_text
-    gen = st.button("Generate battlecard", type="primary")
+    gen = st.button("Generate battlecard", type="primary", key="generate_btn")
     st.divider()
 
     st.subheader("Golden RFP cheat-sheet (judge-proof)")
@@ -365,43 +453,55 @@ with left:
 
     st.divider()
     st.subheader("Retain new intel")
-    new_type = st.selectbox("Intel type", INTEL_TYPES, index=0)
+    new_type = st.selectbox("Intel type", INTEL_TYPES, index=0, key="intel_type")
     new_text = st.text_area("Intel note", height=100,
-                            placeholder="e.g. Acme offered 15% discount to ...")
-    if st.button("Retain new intel"):
+                            placeholder="e.g. Acme offered 15% discount to ...",
+                            key="new_text")
+    if st.button("Retain new intel", key="retain_btn"):
         if not new_text.strip():
             st.warning("Type an intel note first.")
         else:
             try:
                 from src.hindsight_client import retain
                 retain(text=new_text, context="competitive intel " + new_type,
-                       tags=["competitor:" + competitor])
+                       document_id="ui-{}".format(int(time.time())),
+                       timestamp=datetime.datetime.now(
+                           datetime.timezone.utc).isoformat(),
+                       tags=["competitor:" + competitor],
+                       metadata={"intel_type": new_type,
+                                 "competitor": competitor})
                 st.success("Retained to memory.")
-            except Exception as exc:
+                st.session_state["new_text"] = ""
+                st.rerun()
+            except BaseException as exc:
                 st.info("Saved to local snapshot for this session ({}).".format(exc))
     st.divider()
     st.subheader("Stage kit: Seed + Reset (<30s)")
     kit_c1, kit_c2 = st.columns(2)
     with kit_c1:
-        if st.button("Seed demo data"):
+        if st.button("Seed demo data", key="seed_btn"):
             started = time.time()
             try:
                 import seed as seed_mod
-                seed_mod.retain_all(seed_mod.load_seed_items(seed_mod.DEFAULT_SEED_FILE))
+                seed_items = seed_mod.load_seed_items(seed_mod.DEFAULT_SEED_FILE)
+                seed_mod.retain_all(seed_items)
                 elapsed = time.time() - started
-                st.success("Seeded 18 notes in {:.1f}s (<30s).".format(elapsed))
-            except Exception as exc:
+                st.success("Seeded {} notes in {:.1f}s (<30s).".format(
+                    len(seed_items), elapsed))
+            except BaseException as exc:
                 st.info("Local snapshot ready ({} notes, seed.json). {}".format(len(items), exc))
+            st.rerun()
     with kit_c2:
-        if st.button("Reset memory"):
+        if st.button("Reset local snapshot", key="reset_btn"):
             started = time.time()
             try:
                 from src.hindsight_client import clear_offline_store
                 clear_offline_store()
-            except Exception:
+            except BaseException:
                 pass
             elapsed = time.time() - started
             st.success("Reset in {:.1f}s (<30s). Re-Seed to restore.".format(elapsed))
+            st.rerun()
     st.caption("Recovery drill: restart + Seed in <30s. Screenshot bank night-before.")
     st.caption("Seed items loaded: {}".format(len(items)))
     st.caption("Local snapshot = same recall path as live Hindsight; "
@@ -444,9 +544,33 @@ with right:
     acme_roi = arr_roi_for_competitor(items, "Acme")
     st.caption("Example stage line: {} (Acme $96K + $120K).".format(acme_roi["line"]))
 
+    # Surface agent fallback errors instead of silently swallowing (fix #3).
+    if st.session_state.get("_agent_error"):
+        st.warning("Agent fallback: {}".format(st.session_state["_agent_error"]))
+
     if gen:
+        st.session_state["_agent_error"] = ""
         recalled = offline_recall(rfp_text, competitor, items)
         result, mode = generate_with_memory(rfp_text, competitor, recalled)
+        # Persist so reruns (any widget interaction) don't wipe output (fix #1).
+        st.session_state["_recalled"] = recalled
+        st.session_state["_result"] = result
+        st.session_state["_mode"] = mode
+        st.session_state["_gen_competitor"] = competitor
+        st.session_state["_gen_rfp"] = rfp_text
+
+    # Render from persisted state so output survives reruns (fix #1, #7).
+    persisted_result = st.session_state.get("_result")
+    persisted_recalled = st.session_state.get("_recalled")
+    persisted_mode = st.session_state.get("_mode")
+    persisted_comp = st.session_state.get("_gen_competitor") or competitor
+    persisted_rfp = st.session_state.get("_gen_rfp") or rfp_text
+    if persisted_result is not None and persisted_recalled is not None:
+        recalled = persisted_recalled
+        result = persisted_result
+        mode = persisted_mode
+        competitor = persisted_comp
+        rfp_text = persisted_rfp
         if mode == "offline" and not has_hindsight_keys():
             st.info("Local memory snapshot active ({} notes from seed.json) - "
                     "same recall path as live Hindsight. Add keys for shared bank.".format(len(items)))
@@ -463,13 +587,16 @@ with right:
         with c2:
             st.markdown("### With memory")
             st.markdown(result.get("battlecard_md", ""))
-        # Export + ROI: .md download computed live from current battlecard.
+        # Export + ROI: .md download computed live from persisted battlecard.
         battlecard_md = result.get("battlecard_md", "") or ""
+        export_date = datetime.date.today().isoformat()
         st.download_button(
             label="Download battlecard .md",
             data=battlecard_md,
-            file_name="battlecard-{}-.md".format(competitor.lower()),
+            file_name="battlecard-{}-{}.md".format(
+                str(competitor).lower(), export_date),
             mime="text/markdown",
+            key="download_btn",
         )
         current_roi = arr_roi_for_competitor(items, competitor)
         st.write("**ROI:** {}".format(current_roi["line"]))
