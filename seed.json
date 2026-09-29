@@ -1,0 +1,164 @@
+[
+  {
+    "id": "intel-001",
+    "competitor": "Acme",
+    "type": "pricing",
+    "content": "Acme quoted $48,000/yr for 200 seats to Northwind Traders (Aug 2026), undercutting us by 12%. Includes onboarding free, renewal uplift capped at 5%. Source: discovery call notes from rep Priya S.",
+    "timestamp": "2026-08-04T10:30:00Z",
+    "deal_id": "deal-northwind-042",
+    "tags": ["pricing", "discount", "mid-market"]
+  },
+  {
+    "id": "intel-002",
+    "competitor": "Acme",
+    "type": "feature",
+    "content": "Acme launched SSO + SCIM provisioning in v4.2 (Aug 12). Gap closed vs us on enterprise auth, but their audit logs only retain 30 days vs our 365 days. Confirmed via Acme changelog + SE review.",
+    "timestamp": "2026-08-13T14:00:00Z",
+    "deal_id": "deal-innotec-117",
+    "tags": ["sso", "security", "gap-closed"]
+  },
+  {
+    "id": "intel-003",
+    "competitor": "Acme",
+    "type": "win",
+    "content": "WON vs Acme at Globex Logistics ($96K ARR, 350 seats). Won on 365-day audit retention + India data residency. Acme could not commit to Mumbai region hosting. Champion: CTO Maria D.",
+    "timestamp": "2026-09-02T09:15:00Z",
+    "deal_id": "deal-globex-089",
+    "tags": ["win", "compliance", "data-residency"]
+  },
+  {
+    "id": "intel-004",
+    "competitor": "Acme",
+    "type": "loss",
+    "content": "LOST to Acme at BluePeak Retail ($54K ARR). Reason: Acme offered 20% discount + free migration. Our price $68K was seen as too high for 150 seats. Lesson: need SMB discount tier.",
+    "timestamp": "2026-08-21T16:45:00Z",
+    "deal_id": "deal-bluepeak-033",
+    "tags": ["loss", "price", "smb"]
+  },
+  {
+    "id": "intel-005",
+    "competitor": "Acme",
+    "type": "pricing",
+    "content": "Acme enterprise tier is $22/user/month billed annually, $27 month-to-month. Volume break at 500+ seats drops to $18. Intel from Acme pricing page archived Sep 1 + partner tip.",
+    "timestamp": "2026-09-01T11:00:00Z",
+    "deal_id": "deal-general-pricing",
+    "tags": ["pricing", "per-seat", "enterprise"]
+  },
+  {
+    "id": "intel-006",
+    "competitor": "Acme",
+    "type": "win",
+    "content": "WON vs Acme at CareWell Hospitals ($120K ARR). Decisive: HIPAA BAA + on-call support SLA 99.99%. Acme support is chat-only on standard plan. Champion: CISO Dr. Rao.",
+    "timestamp": "2026-09-18T13:20:00Z",
+    "deal_id": "deal-carewell-201",
+    "tags": ["win", "healthcare", "support-sla"]
+  },
+  {
+    "id": "intel-007",
+    "competitor": "Nova",
+    "type": "pricing",
+    "content": "Nova quoted $36,000/yr flat for up to 500 seats to FinEdge Startup (Jul 2026). Aggressive flat-rate land-and-expand play. Renewal jumps to $60K in year 2 per their rep.",
+    "timestamp": "2026-07-30T10:00:00Z",
+    "deal_id": "deal-finedge-015",
+    "tags": ["pricing", "flat-rate", "startup"]
+  },
+  {
+    "id": "intel-008",
+    "competitor": "Nova",
+    "type": "feature",
+    "content": "Nova shipped AI summarizer v2 (Aug 2026) but it only supports English. Our multilingual support (Hindi, Telugu, Tamil) is a clear differentiator in APAC deals. Tested in Nova trial workspace.",
+    "timestamp": "2026-08-09T15:30:00Z",
+    "deal_id": "deal-apac-trial-07",
+    "tags": ["ai", "multilingual", "differentiator"]
+  },
+  {
+    "id": "intel-009",
+    "competitor": "Nova",
+    "type": "feature",
+    "content": "Nova lacks offline mode and mobile MDM controls. Lost a 400-seat field-services deal because technicians need offline sync. Our offline-first client won the technical validation.",
+    "timestamp": "2026-08-27T12:10:00Z",
+    "deal_id": "deal-fieldops-078",
+    "tags": ["offline", "mobile", "technical-win"]
+  },
+  {
+    "id": "intel-010",
+    "competitor": "Nova",
+    "type": "win",
+    "content": "WON vs Nova at EduSpark ($44K ARR, 600 seats EDU). Won on per-student pricing + LMS integration (Moodle/Canvas). Nova charges full per-seat with no EDU discount.",
+    "timestamp": "2026-09-10T09:00:00Z",
+    "deal_id": "deal-eduspark-156",
+    "tags": ["win", "education", "lms"]
+  },
+  {
+    "id": "intel-011",
+    "competitor": "Nova",
+    "type": "loss",
+    "content": "LOST to Nova at BrightCart D2C ($38K ARR). Nova's Shopify plug-and-play connector went live in 1 day; our custom integration needed 2 weeks. Need faster SMB onboarding.",
+    "timestamp": "2026-09-05T17:00:00Z",
+    "deal_id": "deal-brightcart-061",
+    "tags": ["loss", "integration", "time-to-value"]
+  },
+  {
+    "id": "intel-012",
+    "competitor": "Nova",
+    "type": "pricing",
+    "content": "Nova Pro is $15/user/month, Business $24. Annual prepay saves 20%. No implementation fee under 100 seats. Source: Nova pricing call with AE Kevin L. on Sep 12.",
+    "timestamp": "2026-09-12T14:25:00Z",
+    "deal_id": "deal-general-pricing",
+    "tags": ["pricing", "smb", "self-serve"]
+  },
+  {
+    "id": "intel-013",
+    "competitor": "Vertex",
+    "type": "pricing",
+    "content": "Vertex quoted $210K/yr for 1000-seat enterprise at Sterling Bank (Aug 2026). Premium positioning 2.5x our price, but includes dedicated CSM + custom DPA. Procurement pushed back on cost.",
+    "timestamp": "2026-08-16T10:45:00Z",
+    "deal_id": "deal-sterling-190",
+    "tags": ["pricing", "enterprise", "premium"]
+  },
+  {
+    "id": "intel-014",
+    "competitor": "Vertex",
+    "type": "feature",
+    "content": "Vertex has SOC 2 Type II + ISO 27001 + EU data residency (Frankfurt). Feature parity on compliance. We differentiate on Mumbai + Hyderabad regions for DPDP Act alignment.",
+    "timestamp": "2026-08-06T09:30:00Z",
+    "deal_id": "deal-compliance-matrix",
+    "tags": ["compliance", "soc2", "data-residency"]
+  },
+  {
+    "id": "intel-015",
+    "competitor": "Vertex",
+    "type": "feature",
+    "content": "Vertex API rate limit is 100 req/min on standard, 1000 on enterprise. Our limit is 2000/min default. Vertex customers complain about webhook delays >5 min in community forum (Aug thread).",
+    "timestamp": "2026-08-29T18:00:00Z",
+    "deal_id": "deal-api-eval-023",
+    "tags": ["api", "limits", "webhooks"]
+  },
+  {
+    "id": "intel-016",
+    "competitor": "Vertex",
+    "type": "win",
+    "content": "WON vs Vertex at AeroFab Manufacturing ($150K ARR, 800 seats). Won on offline-first + SAP integration delivered in 3 weeks. Vertex quoted 12-week services engagement at $40K extra.",
+    "timestamp": "2026-09-22T11:15:00Z",
+    "deal_id": "deal-aerofab-134",
+    "tags": ["win", "manufacturing", "integration-speed"]
+  },
+  {
+    "id": "intel-017",
+    "competitor": "Vertex",
+    "type": "loss",
+    "content": "LOST to Vertex at Meridian Insurance ($180K ARR). Vertex's actuarial reporting templates + Snowflake native connector were decisive. We had no equivalent vertical pack. Build insurance template pack.",
+    "timestamp": "2026-09-15T16:00:00Z",
+    "deal_id": "deal-meridian-177",
+    "tags": ["loss", "vertical", "analytics"]
+  },
+  {
+    "id": "intel-018",
+    "competitor": "Vertex",
+    "type": "win",
+    "content": "WON vs Vertex at CityGrid Utilities ($88K ARR, 450 seats). Won on Hindi/Telugu UI + IVR fallback for field crews. Vertex English-only UI failed user acceptance with 60 field staff.",
+    "timestamp": "2026-09-27T10:05:00Z",
+    "deal_id": "deal-citygrid-209",
+    "tags": ["win", "localization", "utilities"]
+  }
+]
