@@ -359,6 +359,7 @@ with left:
                 ", ".join(preset["expected"]), preset["why"]))
             if st.button("Load this RFP", key="load-" + preset["label"]):
                 st.session_state["_rfp_text"] = preset["text"]
+                st.session_state["rfp_text_input"] = preset["text"]
                 st.session_state["_competitor"] = preset["competitor"]
                 st.rerun()
 
