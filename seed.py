@@ -16,6 +16,13 @@ import json
 import os
 import sys
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
 DEFAULT_SEED_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed.json")
 
 
@@ -28,8 +35,11 @@ def load_seed_items(seed_file):
 def build_retain_kwargs(item):
     """Build kwargs for hindsight retain call. Single place for mapping."""
     competitor = item.get("competitor", "Unknown")
+    # Canonical tag is lowercase (agent _competitor_tag matches); display
+    # case preserved in metadata.competitor.
+    display = str(competitor or "Unknown").strip() or "Unknown"
     intel_type = item.get("type", "general")
-    tags = ["competitor:{}".format(competitor)]
+    tags = ["competitor:{}".format(display.lower())]
     for t in item.get("tags", []):
         tags.append(t)
     return {
@@ -41,7 +51,7 @@ def build_retain_kwargs(item):
             "deal_id": item.get("deal_id"),
             "timestamp": item.get("timestamp"),
             "intel_type": intel_type,
-            "competitor": competitor,
+            "competitor": display,
         },
     }
 

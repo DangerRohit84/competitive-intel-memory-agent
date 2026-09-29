@@ -10,21 +10,36 @@ generate_battlecard(rfp_text, competitor) -> {battlecard_md, citations, memory_i
 - Groq TPM/429 errors: backoff + smaller prompt, then offline template fallback
 """
 import json
+import logging
 import os
 import time
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
 from src import hindsight_client as hc
+
+logger = logging.getLogger(__name__)
 
 SEED_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "seed.json")
 CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "qwen/qwen3-32b")
 
 
 def _competitor_tag(competitor: str) -> str:
-    # Canonicalize case so Acme==acme==ACME; keeps tags=["competitor:X"] convention.
-    # Stored tags use Title case (seed.py); downstream _offline_search is also
-    # case-insensitive (lower() both sides) as belt-and-braces.
+    """Canonical competitor tag (lowercase) for Hindsight scope.
+
+    Uses lower (not title()) so IBM stays IBM-canonical `competitor:ibm`
+    instead of broken `competitor:Ibm`. Display name (original case) is kept
+    separately by callers — this returns ONLY the tag. Rejects empty.
+    """
     name = (competitor or "").strip()
-    return "competitor:{}".format(name.title() if name else "")
+    if not name:
+        raise ValueError("competitor is required for tag")
+    return "competitor:{}".format(name.lower())
 
 
 REFLECT_RESPONSE_SCHEMA = {
